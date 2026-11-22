@@ -5,7 +5,9 @@ I build WordPress plugins and help agencies with focused WooCommerce tasks, incl
 | Selected work | What you'll find |
 | --- | --- |
 | [Carton Shipping Demo](https://github.com/amirho3ein71200-eng/woo-carton-shipping-demo) | A WooCommerce shipping-zone method with source, checkout screenshot, and tests. |
-| [Dastresi-Ban case study](https://github.com/amirho3ein71200-eng/dastresi-ban-case-study) | How a commercial WordPress plugin grants and expires content access based on WooCommerce purchases. |
+| [Supplier Price Preview](https://github.com/amirho3ein71200-eng/woo-supplier-price-preview) | CSV preview with exact SKU matching, duplicate detection, and tests against WooCommerce products. |
+| [Dastresi-Ban case study](https://github.com/amirho3ein71200-eng/dastresi-ban-case-study) | A commercial plugin case study with source and integration tests for purchase-based access. |
+| [Chaleshino Review Workflow](https://github.com/amirho3ein71200-eng/chaleshino-review-workflow) | WordPress judging, tied rankings, and publication checks with synthetic entries. |
 
 I agree on scope in writing and quote after reviewing the brief.
 
