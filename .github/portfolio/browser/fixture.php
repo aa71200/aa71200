@@ -15,12 +15,31 @@ if ('order' === $argv[1]) {
         throw new RuntimeException('Checkout did not create a persisted order.');
     }
     echo wp_json_encode([
+        'id' => $order->get_id(),
         'status' => $order->get_status(),
         'shipping' => (float) $order->get_shipping_total(),
         'payment' => $order->get_payment_method(),
         'pickup' => $order->get_meta('_codexawp_pickup_point'),
         'reference' => $order->get_meta('_codexawp_po_reference'),
     ]);
+    exit;
+}
+
+if ('order-admin' === $argv[1]) {
+    $order = wc_get_order((int) $argv[2]);
+    if (!$order || $order->get_billing_email() !== 'portfolio@example.test') {
+        throw new RuntimeException('Expected an order created by this browser fixture.');
+    }
+    $name = 'portfolio_admin_' . strtolower(wp_generate_password(8, false));
+    $password = wp_generate_password(28, false);
+    $id = wp_insert_user([
+        'user_login' => $name, 'user_pass' => $password, 'user_email' => $name . '@example.test', 'role' => 'administrator',
+    ]);
+    if (is_wp_error($id)) {
+        throw new RuntimeException('Could not create the disposable order viewer.');
+    }
+    $url = admin_url('admin.php?page=wc-orders&action=edit&id=' . $order->get_id());
+    echo wp_json_encode(['login' => wp_login_url($url), 'account' => ['login' => $name, 'password' => $password]]);
     exit;
 }
 
@@ -55,7 +74,7 @@ if ('comparison-editor' === $argv[1]) {
 }
 
 [$script, $plugin, $mode] = $argv;
-if (!in_array($plugin, ['woo-pickup-point-checkout', 'woo-carton-shipping-demo', 'woo-purchase-order-gateway'], true) ||
+if (!in_array($plugin, ['woo-pickup-point-checkout', 'woo-carton-shipping-demo', 'woo-purchase-order-gateway', 'shipping-showcase'], true) ||
     !in_array($mode, ['classic', 'blocks'], true)) {
     throw new InvalidArgumentException('Unexpected checkout fixture.');
 }
@@ -88,7 +107,7 @@ if ('blocks' === $mode && !$blocks) {
     throw new RuntimeException('WooCommerce checkout block content is unavailable.');
 }
 $content = 'classic' === $mode ? '[woocommerce_checkout]' : $blocks;
-if ('blocks' === $mode && 'woo-pickup-point-checkout' === $plugin) {
+if ('blocks' === $mode && in_array($plugin, ['woo-pickup-point-checkout', 'shipping-showcase'], true)) {
     $content = str_replace(
         '<div class="wp-block-woocommerce-checkout-shipping-methods-block"></div>',
         '<div class="wp-block-woocommerce-checkout-shipping-methods-block"><!-- wp:codexawp/pickup-point /--></div>',
@@ -125,19 +144,20 @@ foreach (['CA' => 'north', 'NY' => 'south'] as $state => $catalogue) {
         'woo-pickup-point-checkout' => 'codexawp_pickup',
         'woo-carton-shipping-demo' => 'codexawp_carton_demo',
         'woo-purchase-order-gateway' => 'flat_rate',
+        'shipping-showcase' => 'all',
     ][$plugin];
     $existing = [];
     foreach ($zone->get_shipping_methods() as $method) {
         $existing[$method->id] = $method->get_instance_id();
     }
     foreach ($methods as $id => $settings) {
-        if (!isset($existing[$id]) && $id !== $selected && 'flat_rate' !== $id) {
+        if (!isset($existing[$id]) && 'all' !== $selected && $id !== $selected && 'flat_rate' !== $id) {
             continue;
         }
         $instance = $existing[$id] ?? $zone->add_shipping_method($id);
         update_option("woocommerce_{$id}_{$instance}_settings", $settings, false);
         global $wpdb;
-        $wpdb->update($wpdb->prefix . 'woocommerce_shipping_zone_methods', ['is_enabled' => (int) ($id === $selected || ('flat_rate' === $id && 'codexawp_pickup' === $selected))], ['instance_id' => $instance]);
+        $wpdb->update($wpdb->prefix . 'woocommerce_shipping_zone_methods', ['is_enabled' => (int) ('all' === $selected || $id === $selected || ('flat_rate' === $id && 'codexawp_pickup' === $selected))], ['instance_id' => $instance]);
     }
 }
 WC_Cache_Helper::get_transient_version('shipping', true);
@@ -150,6 +170,18 @@ $product->set_status('publish');
 $product->set_virtual(false);
 $product_id = $product->save();
 update_option('codexawp_fixture_product', $product_id, false);
+
+if ('shipping-showcase' === $plugin) {
+    foreach (['pickup' => 'Pickup demo notebook', 'carton' => 'Carton demo notebook'] as $scenario => $title) {
+        $sku = 'codexawp-showcase-' . $scenario;
+        $showcase = new WC_Product_Simple(wc_get_product_id_by_sku($sku));
+        $showcase->set_name($title);
+        $showcase->set_sku($sku);
+        $showcase->set_regular_price('4.00');
+        $showcase->set_status('publish');
+        $showcase->save();
+    }
+}
 
 $customers = [];
 if ('woo-purchase-order-gateway' === $plugin) {

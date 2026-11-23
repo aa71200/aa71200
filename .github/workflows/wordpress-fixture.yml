@@ -68,16 +68,25 @@ jobs:
           coverage: none
       - name: Lint project PHP
         run: git ls-files -z '*.php' ':!src/Vendor/**' | xargs -0 -r -n1 php -l
-      - name: WordPress coding standards report
+      - name: Check WordPress coding standards
         if: matrix.environment == 'baseline'
         shell: bash
         run: |
           set -euo pipefail
           composer install --no-interaction --prefer-dist --working-dir=.portfolio-qa/.github/portfolio/quality
-          .portfolio-qa/.github/portfolio/quality/vendor/bin/phpcs \
-            --standard=WordPress --extensions=php --ignore='*/src/Vendor/*,*/.portfolio-qa/*' \
-            --runtime-set ignore_errors_on_exit 1 --runtime-set ignore_warnings_on_exit 1 \
-            --report=full .
+          quality=.portfolio-qa/.github/portfolio/quality
+          report="$RUNNER_TEMP/wordpress-coding-standards.json"
+          files="$RUNNER_TEMP/wordpress-php-files.txt"
+          git -c core.quotePath=false ls-files '*.php' \
+            ':!src/Vendor/**' ':!**/vendor/**' ':!**/node_modules/**' > "$files"
+          phpcs_status=0
+          "$quality/vendor/bin/phpcs" \
+            --standard=WordPress --file-list="$files" --report=json > "$report" || phpcs_status=$?
+          if [[ "$phpcs_status" -gt 3 ]]; then
+            cat "$report"
+            exit "$phpcs_status"
+          fi
+          php "$quality/check-wpcs.php" check "$GITHUB_WORKSPACE" "$report"
       - name: Install disposable WordPress
         shell: bash
         env:
@@ -160,6 +169,7 @@ jobs:
           set -euo pipefail
           export CODEXAWP_TEST_WP_LOAD="$RUNNER_TEMP/wp/wp-load.php"
           if [[ "$CHECK_ACCESS_MIGRATION" == "true" ]]; then
+            php examples/elementor-access-controls/tests/check.php
             php examples/purchase-access/tests/check.php
             php examples/purchase-access/tests/check.php --legacy-orders
             export ACP_TEST_WP_ROOT="$RUNNER_TEMP/wp"
@@ -204,9 +214,12 @@ jobs:
           version="${version##*-}"
           php "$fixture/shipping-upgrade.php" "$slug" after "$version"
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        if: inputs.browser
+        if: inputs.browser || inputs.access_migration
         with:
           node-version: '22'
+      - name: Exercise access card style inheritance
+        if: inputs.access_migration
+        run: node --test examples/access-status-builder/tests/computed-styles.test.mjs
       - name: Exercise Classic and Blocks checkout
         if: inputs.browser
         shell: bash

@@ -1,15 +1,27 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { mkdir } from 'node:fs/promises';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
 const fixturePath = fileURLToPath(new URL('./fixture.php', import.meta.url));
 const plugin = process.env.CODEXAWP_TEST_PLUGIN;
+const captureDirectory = process.env.CODEXAWP_CAPTURE_DIR;
 const modes = process.env.CODEXAWP_CHECKOUT_MODE ? [process.env.CODEXAWP_CHECKOUT_MODE] : ['classic', 'blocks'];
 const fixture = (...args) => JSON.parse(execFileSync(process.env.CODEXAWP_TEST_PHP || 'php', [fixturePath, ...args], { encoding: 'utf8' }));
 
 const north = { address: '143 Main Street', city: 'Los Angeles', state: 'CA', postcode: '90012' };
 const south = { address: '84 Main Street', city: 'New York', state: 'NY', postcode: '10001' };
+
+async function capture(page, file, selector) {
+	if (!captureDirectory) return;
+	await mkdir(captureDirectory, { recursive: true });
+	await page.evaluate(() => document.fonts.ready);
+	const region = page.locator(selector).first();
+	await region.waitFor();
+	await region.screenshot({path: join(captureDirectory, file), animations: 'disabled'});
+}
 
 async function address(page, mode, value, guest) {
 	const fields = {
@@ -37,7 +49,7 @@ async function address(page, mode, value, guest) {
 }
 
 async function begin(browser, mode, data, customer = null) {
-	const page = await browser.newPage();
+	const page = await browser.newPage(captureDirectory ? { viewport: { width: 1440, height: 1000 } } : {});
 	page.setDefaultTimeout(12_000);
 	try {
 		if (customer) {
@@ -85,6 +97,7 @@ async function purchaseOrder(browser, mode, data) {
 	try {
 		await page.getByText('Purchase Order', { exact: true }).first().click();
 		await page.getByLabel('Purchase order reference', { exact: false }).first().fill('FIXTURE-1042');
+		await capture(page, 'checkout-' + mode + '.png', mode === 'classic' ? 'form.checkout' : '.wp-block-woocommerce-checkout');
 		await placeOrder(page).click();
 		const order = await orderFromCheckout(page);
 		assert.equal(order.reference, 'FIXTURE-1042');
@@ -113,10 +126,27 @@ async function shipping(browser, mode, data) {
 		} else {
 			await page.getByText(/Carton delivery \(2 cartons\)/i).first().waitFor();
 		}
+		await capture(page, 'checkout-' + mode + '.png', mode === 'classic' ? 'form.checkout' : '.wp-block-woocommerce-checkout');
+		if (captureDirectory && mode === 'blocks') {
+			await page.setViewportSize({ width: 390, height: 844 });
+			await capture(page, 'checkout-mobile.png', plugin === 'woo-pickup-point-checkout' ? '.codexawp-pickup' : '.wp-block-woocommerce-checkout-order-summary-block');
+			await page.setViewportSize({ width: 1440, height: 1000 });
+		}
 		await placeOrder(page).click();
 		const order = await orderFromCheckout(page);
 		if (plugin === 'woo-pickup-point-checkout') {
 			assert.equal(order.pickup.id, 'STH-01');
+			if (captureDirectory && mode === 'blocks') {
+				const admin = fixture('order-admin', String(order.id));
+				const orderPage = await browser.newPage({ viewport: { width: 1440, height: 950 } });
+				try {
+					await logIn(orderPage, admin.login, admin.account);
+					await orderPage.getByText('Harbor Locker', { exact: false }).first().waitFor();
+					await capture(orderPage, 'order-pickup-point.png', '#woocommerce-order-data');
+				} finally {
+					await orderPage.close();
+				}
+			}
 		} else {
 			assert.equal(order.shipping, 10);
 		}

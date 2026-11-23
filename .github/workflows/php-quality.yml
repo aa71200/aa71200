@@ -1,0 +1,42 @@
+name: Portfolio PHP quality
+on:
+  workflow_call:
+    inputs:
+      harness_ref:
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  standards:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: aa71200/aa71200
+          ref: ${{ inputs.harness_ref }}
+          path: .portfolio-qa
+          persist-credentials: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: '8.2'
+          coverage: none
+      - name: Check coding standards and PHP syntax
+        run: |
+          set -euo pipefail
+          quality=.portfolio-qa/.github/portfolio/quality
+          composer install --no-interaction --prefer-dist --working-dir="$quality"
+          files="$RUNNER_TEMP/php-files"
+          report="$RUNNER_TEMP/phpcs.json"
+          git -c core.quotePath=false ls-files '*.php' ':!src/Vendor/**' ':!**/vendor/**' > "$files"
+          git ls-files -z '*.php' ':!src/Vendor/**' ':!**/vendor/**' | xargs -0 -r -n 1 php -l
+          phpcs_status=0
+          "$quality/vendor/bin/phpcs" --standard=WordPress --file-list="$files" \
+            --report=json > "$report" || phpcs_status=$?
+          [[ "$phpcs_status" -le 3 ]]
+          php "$quality/check-wpcs.php" check "$GITHUB_WORKSPACE" "$report"

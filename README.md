@@ -1,14 +1,15 @@
-# WooCommerce Integrations for Agencies
+# WordPress & WooCommerce Plugin Developer | CodexaWP
 
 **Amirhossein · CodexaWP**
 
-I build and fix WooCommerce checkout, shipping, and order workflows for agencies. I take on focused tasks such as checkout validation, shipping methods, and changes to existing plugins.
+I build WordPress and WooCommerce plugins as CodexaWP. My projects include content access controls, visual editors, and tools for online stores.
 
 | Selected work | Type | What you can verify |
 | --- | --- | --- |
-| [Dastresi-Ban](https://github.com/aa71200/dastresi-ban-case-study) | Commercial plugin case study | [Marketplace listing](https://www.rtl-theme.com/dastresiban-wordpress-plugin/) and [migration fixture](https://github.com/aa71200/dastresi-ban-case-study/tree/main/examples/template-storage-upgrade) for preserving templates, IDs, and history after an interrupted upgrade. |
-| [Pickup Point Checkout](https://github.com/aa71200/woo-pickup-point-checkout) | Installable WooCommerce demo | [Installation ZIP](https://github.com/aa71200/woo-pickup-point-checkout/releases) and [checkout verification](https://github.com/aa71200/woo-pickup-point-checkout#verification) for rejecting a point outside the current shipping region. |
-| [Packchin Cart Integrity](https://github.com/aa71200/packchin-cart-integrity) | Extracted WooCommerce fixture | [Native cart tests](https://github.com/aa71200/packchin-cart-integrity#run-the-fixture) for undoing a failed kit addition and handling a retried request. |
+| [Dastresi-Ban](https://github.com/aa71200/dastresi-ban-case-study) | Commercial WordPress plugin | [Access-card builder](https://github.com/aa71200/dastresi-ban-case-study/tree/main/examples/access-status-builder), [Classic and Atomic Elementor controls](https://github.com/aa71200/dastresi-ban-case-study/tree/main/examples/elementor-access-controls), and [marketplace listing](https://www.rtl-theme.com/dastresiban-wordpress-plugin/). |
+| [Pickup Point Checkout](https://github.com/aa71200/woo-pickup-point-checkout) | Installable WooCommerce demo | [Installation ZIP](https://github.com/aa71200/woo-pickup-point-checkout/releases/latest) and [checkout tests](https://github.com/aa71200/woo-pickup-point-checkout#verification) for rejecting a pickup point outside the shipping region. |
+| [Chaleshino Private Submissions](https://github.com/aa71200/chaleshino-private-submissions) | WordPress privacy code sample | [Role checks](https://github.com/aa71200/chaleshino-private-submissions) for the participant, assigned reviewer and call manager. |
+| [WPLM License Status Client](https://github.com/aa71200/wplm-license-status-client) | WordPress administration code sample | [Status tests](https://github.com/aa71200/wplm-license-status-client) for active, expired and inactive licenses and failed refreshes. |
 
 <details>
 <summary>More projects</summary>
@@ -25,6 +26,7 @@ I build and fix WooCommerce checkout, shipping, and order workflows for agencies
 
 **Extracted fixtures and PHP engines**
 
+- [Packchin Cart Integrity](https://github.com/aa71200/packchin-cart-integrity) — native cart tests for a failed kit addition and repeated requests
 - [Supplier Price Preview](https://github.com/aa71200/woo-supplier-price-preview) — CSV preview with exact SKU matching
 - [MarginGuard Cost Allocation](https://github.com/aa71200/marginguard-order-cost-allocation) — allocation in exact minor units
 - [Hamsaz Configurator Rules](https://github.com/aa71200/hamsaz-configurator-rules) — bundle constraints and incomplete catalogue data
@@ -38,6 +40,6 @@ I build and fix WooCommerce checkout, shipping, and order workflows for agencies
 
 ## Contact
 
-After reviewing the brief, I agree the scope in writing and quote a fixed price with a delivery estimate. For changes to existing stores, I verify on staging and hand over a PR with test results and a note on what changed.
+Tell me about the WordPress or WooCommerce plugin you are working on. I can review the scope, estimate the work and share how I would test it.
 
 [Email](mailto:amirho3ein71200@gmail.com) · [Telegram](https://t.me/xx71200) · UTC+3:30 (Tehran)
