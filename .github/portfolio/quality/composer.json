@@ -1,0 +1,16 @@
+{
+  "name": "codexawp/portfolio-quality",
+  "description": "WordPress coding standards runner for the public portfolio fixtures",
+  "type": "project",
+  "license": "proprietary",
+  "require-dev": {
+    "wp-coding-standards/wpcs": "^3.2",
+    "dealerdirect/phpcodesniffer-composer-installer": "^1.0"
+  },
+  "config": {
+    "allow-plugins": {
+      "dealerdirect/phpcodesniffer-composer-installer": true
+    },
+    "sort-packages": true
+  }
+}

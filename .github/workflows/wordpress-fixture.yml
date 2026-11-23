@@ -11,6 +11,21 @@ on:
       access_migration:
         type: boolean
         default: false
+      wordpress_version:
+        type: string
+        default: '7.1.3'
+      woocommerce_version:
+        type: string
+        default: '11.1.2'
+      php_version:
+        type: string
+        default: '8.2'
+      browser:
+        type: boolean
+        default: false
+      harness_ref:
+        type: string
+        required: true
 
 permissions:
   contents: read
@@ -18,7 +33,11 @@ permissions:
 jobs:
   integration:
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: ${{ fromJSON(inputs.activate && '["baseline","minimum","php83"]' || '["baseline"]') }}
     services:
       mariadb:
         image: mariadb:10.11
@@ -34,20 +53,43 @@ jobs:
           --health-retries=15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: aa71200/aa71200
+          ref: ${{ inputs.harness_ref }}
+          path: .portfolio-qa
+          persist-credentials: false
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
         with:
-          php-version: '8.2'
+          php-version: ${{ matrix.environment == 'php83' && '8.3' || inputs.php_version }}
           extensions: mysqli, mbstring, curl, zip
           coverage: none
+      - name: Lint project PHP
+        run: git ls-files -z '*.php' ':!src/Vendor/**' | xargs -0 -r -n1 php -l
+      - name: WordPress coding standards report
+        if: matrix.environment == 'baseline'
+        shell: bash
+        run: |
+          set -euo pipefail
+          composer install --no-interaction --prefer-dist --working-dir=.portfolio-qa/.github/portfolio/quality
+          .portfolio-qa/.github/portfolio/quality/vendor/bin/phpcs \
+            --standard=WordPress --extensions=php --ignore='*/src/Vendor/*,*/.portfolio-qa/*' \
+            --runtime-set ignore_errors_on_exit 1 --runtime-set ignore_warnings_on_exit 1 \
+            --report=full .
       - name: Install disposable WordPress
         shell: bash
         env:
           INSTALL_WC: ${{ inputs.woocommerce }}
           LOAD_CALLER_PLUGIN: ${{ inputs.activate }}
+          WP_VERSION: ${{ matrix.environment == 'minimum' && '7.0' || inputs.wordpress_version }}
+          WC_VERSION: ${{ matrix.environment == 'minimum' && '11.1.0' || inputs.woocommerce_version }}
         run: |
           set -euo pipefail
           mkdir "$RUNNER_TEMP/wp"
-          curl --fail --silent --show-error --retry 3 https://wordpress.org/wordpress-7.1.3.tar.gz |
+          [[ "$WP_VERSION" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ && "$WC_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          curl --fail --silent --show-error --retry 3 "https://wordpress.org/wordpress-$WP_VERSION.tar.gz" |
             tar -xz --strip-components=1 -C "$RUNNER_TEMP/wp"
           cd "$RUNNER_TEMP/wp"
           cat > wp-config.php <<'PHP'
@@ -58,7 +100,7 @@ jobs:
           define( 'DB_HOST', '127.0.0.1:3306' );
           define( 'DB_CHARSET', 'utf8mb4' );
           define( 'WP_ENVIRONMENT_TYPE', 'local' );
-          define( 'WP_HOME', 'http://portfolio.test' );
+          define( 'WP_HOME', 'http://127.0.0.1:8077' );
           define( 'WP_SITEURL', WP_HOME );
           define( 'DISABLE_WP_CRON', true );
           define( 'WP_HTTP_BLOCK_EXTERNAL', true );
@@ -69,14 +111,15 @@ jobs:
           printf '%s\n' '<?php add_filter( "pre_wp_mail", "__return_true" );' > wp-content/mu-plugins/offline.php
           plugins=()
           if [[ "$INSTALL_WC" == "true" ]]; then
-            curl --fail --silent --show-error --retry 3 https://downloads.wordpress.org/plugin/woocommerce.11.1.2.zip -o "$RUNNER_TEMP/woocommerce.zip"
+            curl --fail --silent --show-error --retry 3 "https://downloads.wordpress.org/plugin/woocommerce.$WC_VERSION.zip" -o "$RUNNER_TEMP/woocommerce.zip"
             unzip -q "$RUNNER_TEMP/woocommerce.zip" -d wp-content/plugins
             plugins+=(woocommerce)
           fi
           if [[ "$LOAD_CALLER_PLUGIN" == "true" ]]; then
             slug="${GITHUB_REPOSITORY#*/}"
-            test -f "$GITHUB_WORKSPACE/$slug.php"
-            ln -s "$GITHUB_WORKSPACE" "wp-content/plugins/$slug"
+            package="$(php "$GITHUB_WORKSPACE/.portfolio-qa/.github/portfolio/package.php" "$GITHUB_WORKSPACE" "$slug" "$RUNNER_TEMP/packages")"
+            ( cd "$RUNNER_TEMP/packages" && sha256sum -c "$(basename "$package").sha256" )
+            unzip -q "$package" -d wp-content/plugins
             plugins+=("$slug")
           fi
           cat > provision-portfolio.php <<'PHP'
@@ -118,12 +161,69 @@ jobs:
           export CODEXAWP_TEST_WP_LOAD="$RUNNER_TEMP/wp/wp-load.php"
           if [[ "$CHECK_ACCESS_MIGRATION" == "true" ]]; then
             php examples/purchase-access/tests/check.php
+            php examples/purchase-access/tests/check.php --legacy-orders
             export ACP_TEST_WP_ROOT="$RUNNER_TEMP/wp"
             export ACP_TEST_DB_HOST='127.0.0.1:3306'
             export ACP_TEST_DB_USER='root'
             export ACP_TEST_DB_PASSWORD='fixture'
             php examples/template-storage-upgrade/tests/acceptance/check.php | tee "$RUNNER_TEMP/migration.log"
             grep -Eq '^[1-9][0-9]* migration checks passed\.' "$RUNNER_TEMP/migration.log"
-          else
+          elif [[ -f tests/check.php ]]; then
             php tests/check.php
+            if [[ "${GITHUB_REPOSITORY#*/}" == "packchin-cart-integrity" ]]; then
+              php tests/check.php --customer
+            fi
+          elif [[ -f tests/quote-test.php ]]; then
+            php tests/quote-test.php
+          elif [[ -f tests/catalog.php ]]; then
+            php tests/catalog.php
+          else
+            echo "Missing the repository test entry point." >&2
+            exit 1
           fi
+      - name: Verify shipping demo upgrade from the published ZIP
+        if: inputs.browser && matrix.environment == 'baseline'
+        shell: bash
+        run: |
+          set -euo pipefail
+          slug="${GITHUB_REPOSITORY#*/}"
+          case "$slug" in
+            woo-carton-shipping-demo|woo-pickup-point-checkout) ;;
+            *) exit 0 ;;
+          esac
+          fixture="$GITHUB_WORKSPACE/.portfolio-qa/.github/portfolio"
+          export CODEXAWP_TEST_WP_LOAD="$RUNNER_TEMP/wp/wp-load.php"
+          previous="$RUNNER_TEMP/$slug-previous.zip"
+          curl --fail --location --silent --show-error --retry 3 \
+            "https://github.com/aa71200/$slug/releases/download/v1.0.0/$slug-1.0.0.zip" -o "$previous"
+          unzip -oq "$previous" -d "$RUNNER_TEMP/wp/wp-content/plugins"
+          php "$fixture/shipping-upgrade.php" "$slug" before 1.0.0
+          package="$(find "$RUNNER_TEMP/packages" -maxdepth 1 -name "$slug-*.zip" -print -quit)"
+          unzip -oq "$package" -d "$RUNNER_TEMP/wp/wp-content/plugins"
+          version="${package%.zip}"
+          version="${version##*-}"
+          php "$fixture/shipping-upgrade.php" "$slug" after "$version"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        if: inputs.browser
+        with:
+          node-version: '22'
+      - name: Exercise Classic and Blocks checkout
+        if: inputs.browser
+        shell: bash
+        run: |
+          set -euo pipefail
+          fixture="$GITHUB_WORKSPACE/.portfolio-qa/.github/portfolio"
+          npm ci --prefix "$fixture/browser" --ignore-scripts
+          ( cd "$fixture/browser" && npx playwright install --with-deps chromium )
+          php -S 127.0.0.1:8077 -t "$RUNNER_TEMP/wp" "$fixture/router.php" > "$RUNNER_TEMP/checkout-server.log" 2>&1 &
+          server="$!"
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          curl --fail --silent --show-error --retry-connrefused --retry 5 http://127.0.0.1:8077/ > /dev/null
+          export CODEXAWP_TEST_WP_LOAD="$RUNNER_TEMP/wp/wp-load.php"
+          export CODEXAWP_TEST_PLUGIN="${GITHUB_REPOSITORY#*/}"
+          npm test --prefix "$fixture/browser"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: inputs.activate && matrix.environment == 'baseline'
+        with:
+          name: installable-demo
+          path: ${{ runner.temp }}/packages/*
