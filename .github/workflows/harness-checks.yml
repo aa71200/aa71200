@@ -1,0 +1,29 @@
+name: Shared fixture checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  syntax:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: '8.2'
+          coverage: none
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - run: git ls-files -z '*.php' | xargs -0 -r -n1 php -l
+      - run: node --check .github/portfolio/browser/checkout.mjs
+      - run: bash -n .github/portfolio/serve-checkout-ci.sh
+      - run: npm ci --prefix .github/portfolio/browser --ignore-scripts
+      - run: composer --no-plugins validate --strict --working-dir=.github/portfolio/quality

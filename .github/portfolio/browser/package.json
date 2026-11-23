@@ -1,0 +1,11 @@
+{
+  "name": "codexawp-portfolio-browser-fixture",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node checkout.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.58.2"
+  }
+}
