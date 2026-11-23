@@ -215,13 +215,9 @@ jobs:
           fixture="$GITHUB_WORKSPACE/.portfolio-qa/.github/portfolio"
           npm ci --prefix "$fixture/browser" --ignore-scripts
           ( cd "$fixture/browser" && npx playwright install --with-deps chromium )
-          php -S 127.0.0.1:8077 -t "$RUNNER_TEMP/wp" "$fixture/router.php" > "$RUNNER_TEMP/checkout-server.log" 2>&1 &
-          server="$!"
-          trap 'kill "$server" 2>/dev/null || true' EXIT
-          curl --fail --silent --show-error --retry-connrefused --retry 5 http://127.0.0.1:8077/ > /dev/null
           export CODEXAWP_TEST_WP_LOAD="$RUNNER_TEMP/wp/wp-load.php"
           export CODEXAWP_TEST_PLUGIN="${GITHUB_REPOSITORY#*/}"
-          npm test --prefix "$fixture/browser"
+          bash "$fixture/serve-checkout-ci.sh" "$RUNNER_TEMP/wp" "$RUNNER_TEMP/checkout-server" "$fixture/browser"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: inputs.activate && matrix.environment == 'baseline'
         with:

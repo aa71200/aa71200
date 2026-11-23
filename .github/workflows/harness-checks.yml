@@ -24,5 +24,6 @@ jobs:
           node-version: '22'
       - run: git ls-files -z '*.php' | xargs -0 -r -n1 php -l
       - run: node --check .github/portfolio/browser/checkout.mjs
+      - run: bash -n .github/portfolio/serve-checkout-ci.sh
       - run: npm ci --prefix .github/portfolio/browser --ignore-scripts
       - run: composer --no-plugins validate --strict --working-dir=.github/portfolio/quality
