@@ -84,8 +84,8 @@ jobs:
           declare(strict_types=1);
           define( 'WP_INSTALLING', true );
           require __DIR__ . '/wp-load.php';
-          require ABSPATH . 'wp-admin/includes/upgrade.php';
-          require ABSPATH . 'wp-admin/includes/plugin.php';
+          require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+          require_once ABSPATH . 'wp-admin/includes/plugin.php';
           if ( ! is_blog_installed() ) {
             wp_install( 'Portfolio Fixture', 'fixture-admin', 'admin@example.test', true, '', wp_generate_password( 32 ) );
           }
