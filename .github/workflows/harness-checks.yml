@@ -27,3 +27,16 @@ jobs:
       - run: bash -n .github/portfolio/serve-checkout-ci.sh
       - run: npm ci --prefix .github/portfolio/browser --ignore-scripts
       - run: composer --no-plugins validate --strict --working-dir=.github/portfolio/quality
+      - name: Check WordPress coding standards for the shared fixtures
+        run: |
+          set -euo pipefail
+          quality=.github/portfolio/quality
+          composer install --no-interaction --prefer-dist --working-dir="$quality"
+          report="$RUNNER_TEMP/wordpress-coding-standards.json"
+          files="$RUNNER_TEMP/wordpress-php-files.txt"
+          git ls-files '*.php' > "$files"
+          phpcs_status=0
+          "$quality/vendor/bin/phpcs" --standard=WordPress --file-list="$files" \
+            --report=json > "$report" || phpcs_status=$?
+          [[ "$phpcs_status" -le 3 ]]
+          php "$quality/check-wpcs.php" check "$GITHUB_WORKSPACE" "$report"
