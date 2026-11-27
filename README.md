@@ -12,6 +12,7 @@ WordPress & WooCommerce plugin developer helping agencies and plugin teams clear
 
 | Focus Area | Repository | Highlights |
 | --- | --- | --- |
+| **Block Checkout & HPOS** | [`woo-blocks-hpos-checkout-bridge`](https://github.com/aa71200/woo-blocks-hpos-checkout-bridge) | Dual-mode Classic & Block Checkout (Store API) B2B fields with strict HPOS CRUD, PHPUnit & WP-CLI |
 | **ACF Pro + Woo Hooks** | [`wp-acf-woo-offer-block`](https://github.com/aa71200/wp-acf-woo-offer-block) | `block.json` ACF Pro block, local JSON sync, HMAC-signed cart discount fees, HPOS compatible |
 | **Checkout & HPOS** | [`woo-pickup-point-checkout`](https://github.com/aa71200/woo-pickup-point-checkout) | Pickup-point selection across Classic & Block Checkout with HPOS support |
 | **B2B & Payment Flows** | [`woo-purchase-order-gateway`](https://github.com/aa71200/woo-purchase-order-gateway) | Offline purchase-order gateway for approved B2B accounts |
