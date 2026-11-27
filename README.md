@@ -20,4 +20,4 @@ WordPress & WooCommerce plugin developer helping agencies and plugin teams clear
 | **Access & Purchase Rules** | [`dastresi-ban-case-study`](https://github.com/aa71200/dastresi-ban-case-study) | Commercial WordPress plugin case study for time-limited post-purchase access |
 | **REST API & CRM Sync** | [`wp-rest-crm-sync-bridge`](https://github.com/aa71200/wp-rest-crm-sync-bridge) | Signed inbound webhooks, schema-validated WP REST endpoints, and outbound CRM sync |
 
-*Looking for white-label help on a scoped WordPress or WooCommerce ticket? Reach out via email.*
+*Looking for white-label help on a scoped WordPress or WooCommerce ticket? Reach out at [amirho3ein71200@gmail.com](mailto:amirho3ein71200@gmail.com).*
